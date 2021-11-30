@@ -4,13 +4,13 @@
             <a class="btn" disabled v-html="labelFrom"></a>
         </div>
         <div class="col-auto p-0 m-0">
-            <input type="text" name="range-start" class="form-control text-center">
+            <input type="text" name="range-start" class="form-control text-center" required>
         </div>
         <div class="col-auto p-0 m-0">
             <a class="btn" disabled v-html="labelTo"></a>
         </div>
         <div class="col-auto p-0 m-0">
-            <input type="text" name="range-end" class="form-control text-center">
+            <input type="text" name="range-end" class="form-control text-center" required>
         </div>
     </div>
 </template>

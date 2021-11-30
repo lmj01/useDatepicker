@@ -1,5 +1,5 @@
 <template>
-    <input ref="refElInput" type="text" class="form-control date">
+    <input ref="refElInput" type="text" class="form-control date" required>
 </template>
 <script>
 import { defineComponent, reactive, onMounted, ref } from 'vue';
