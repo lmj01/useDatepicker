@@ -24,10 +24,14 @@ export default defineComponent({
                 ctx.emit('value', event.target.value);
             });
         }
+        function update(value) {
+            refElInput.value.value = value;
+        }
         onMounted(() => initial());
         return {
             ud,
             refElInput,
+            update,
         };
     },
 });
