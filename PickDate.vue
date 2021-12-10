@@ -14,7 +14,7 @@ export default defineComponent({
             datepicker: null,
         });
         Object.assign(Datepicker.locales, zhCN);
-        const initial = () => {        
+        function initial() {        
             ud.datepicker = new Datepicker(refElInput.value, {
                 format: 'yyyy-mm-dd',
                 language: 'zh-CN',
@@ -27,11 +27,24 @@ export default defineComponent({
         function update(value) {
             refElInput.value.value = value;
         }
+        function lockDate(isLock) {
+            let newOption = {
+                maxDate: null,
+                minDate: null,
+            }
+            if (isLock) {
+                let today = new Date();            
+                newOption.maxDate = `${today.getFullYear()}-${today.getMonth()+1}-${today.getDate()}`;
+                newOption.minDate = `${today.getFullYear()-100}-${today.getMonth()+1}-${today.getDate()}`;
+            }
+            ud.datepicker.setOptions(newOption);
+        }
         onMounted(() => initial());
         return {
             ud,
             refElInput,
             update,
+            lockDate,
         };
     },
 });
