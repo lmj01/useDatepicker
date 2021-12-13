@@ -12,6 +12,7 @@ export default defineComponent({
         const refElInput = ref(null);
         const ud = reactive({
             datepicker: null,
+            bk: '',
         });
         Object.assign(Datepicker.locales, zhCN);
         function initial() {        
@@ -28,6 +29,7 @@ export default defineComponent({
             refElInput.value.value = value;
         }
         function lockDate(isLock) {
+            ud.bk = refElInput.value.value;
             let newOption = {
                 maxDate: null,
                 minDate: null,
@@ -38,6 +40,7 @@ export default defineComponent({
                 newOption.minDate = `${today.getFullYear()-100}-${today.getMonth()+1}-${today.getDate()}`;
             }
             ud.datepicker.setOptions(newOption);
+            refElInput.value.value = ud.bk;
         }
         onMounted(() => initial());
         return {
