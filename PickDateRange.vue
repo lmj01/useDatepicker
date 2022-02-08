@@ -15,8 +15,7 @@
     </div>
 </template>
 <script>
-import { defineComponent, reactive, onMounted, ref } from 'vue';
-import { useI18n } from 'vue-i18n';
+import { defineComponent, reactive, onMounted, ref } from 'vue'
 import Datepicker from './js/Datepicker'
 import DateRangePicker from './js/DateRangePicker'
 import zhCN from './js/i18n/locales/zh-CN'
@@ -35,10 +34,6 @@ export default defineComponent({
     emits: ['update'],
     setup(props, ctx) {
         const refElPickRange = ref(null);
-        const { locale } = useI18n({
-            inheritLocale: true,
-            useScope: 'global',
-        });        
         const ud = reactive({
             idEl: 'idPickDateRange',
             datepicker: null,
@@ -47,7 +42,7 @@ export default defineComponent({
         const initial = () => {                
             ud.datepicker = new DateRangePicker(document.getElementById(ud.idEl), {
                 format: 'yyyy-mm-dd',
-                language: locale.value,
+                language: 'zh-CN',
                 buttonClass: 'btn',
             });
             document.querySelectorAll(`#${ud.idEl} input`).forEach((input) => {
