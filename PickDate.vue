@@ -3,6 +3,7 @@
 </template>
 <script>
 import { defineComponent, reactive, onMounted, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import Datepicker from './js/Datepicker';
 import zhCN from './js/i18n/locales/zh-CN';
 export default defineComponent({
@@ -10,6 +11,10 @@ export default defineComponent({
     emits: ['value'], 
     setup(props, ctx) {
         const refElInput = ref(null);
+        const { locale } = useI18n({
+            inheritLocale: true,
+            useScope: 'global',
+        });        
         const ud = reactive({
             datepicker: null,
             bk: '',
@@ -18,7 +23,7 @@ export default defineComponent({
         function initial() {        
             ud.datepicker = new Datepicker(refElInput.value, {
                 format: 'yyyy-mm-dd',
-                language: 'zh-CN',
+                language: locale.value,
                 buttonClass: 'btn',
             });
             refElInput.value.addEventListener('changeDate', function(event){
