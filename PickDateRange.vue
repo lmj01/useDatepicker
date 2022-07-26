@@ -1,5 +1,5 @@
 <template>
-    <div ref="refElPickRange" id="idPickDateRange" class="position-relative row">
+    <div ref="refElPickRange" :id="idName" class="position-relative row">
         <div class="col-auto p-0 m-0">
             <a class="btn" disabled v-html="labelFrom"></a>
         </div>
@@ -34,12 +34,16 @@ export default defineComponent({
             type: String,
             default: '',
         },
+        idName: {
+            type: String,
+            default: 'idPickDateRange',
+        },
     },
     emits: ['update'],
     setup(props, ctx) {
         const refElPickRange = ref(null);
         const ud = reactive({
-            idEl: 'idPickDateRange',
+            idEl: props.idName,
             datepicker: null,
         });
         Object.assign(Datepicker.locales, zhCN);
