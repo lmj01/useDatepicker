@@ -25,7 +25,7 @@ function initial() {
         buttonClass: 'btn',
     });
     refElInput.value.addEventListener('changeDate', function(event){
-        ctx.emit('value', event.target.value);
+        emit('value', event.target.value);
     });
 }
 function update(value) {
