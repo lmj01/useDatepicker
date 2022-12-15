@@ -47,8 +47,8 @@ $dp-input-in-edit-border-color: darken($link, 5%) !default;
 $dp-input-in-edit-focus-box-shadow-size: 0 0 0.25em 0.25em !default;
 
 //== non-configurable variables ==//
-$dp-cell-shrink-threshold: $dp-cell-size-base * 10;  // = 8 * 1.25
-$dp-cell-shrinked-width: $dp-cell-size-base * 7 / 8;
+$dp-cell-shrink-threshold: calc($dp-cell-size-base * 10);  // = 8 * 1.25
+$dp-cell-shrinked-width: calc($dp-cell-size-base * 7 / 8);
 
 //== mixins ==//
 @import 'mixins';
@@ -114,7 +114,8 @@ $dp-cell-shrinked-width: $dp-cell-size-base * 7 / 8;
 }
 
 %flex-basis-day {
-  flex-basis: percentage(1 / 7);
+  // flex-basis: percentage(1 / 7);
+  flex-basis: 14.28%;
 }
 
 %flex-basis-month-year {
@@ -267,7 +268,7 @@ $dp-cell-shrinked-width: $dp-cell-size-base * 7 / 8;
     @extend %flex-basis-day;
     height: $dp-font-size-normal * $dp-line-height-base;
     line-height: $dp-font-size-normal * $dp-line-height-base;
-    font-size: ($dp-font-size-small + $dp-font-size-normal) / 2;
+    font-size: calc(($dp-font-size-small + $dp-font-size-normal) / 2);
     font-weight: $dp-font-weight-bold;
   }
 
