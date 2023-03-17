@@ -1,5 +1,5 @@
 <template>
-    <input ref="refElInput" type="text" class="form-control date" :class="size" required>
+    <input ref="refElInput" type="text" class="form-control date" :class="size" :required="must">
 </template>
 <script setup>
 import { reactive, onMounted, ref, defineProps, defineEmits, defineExpose } from 'vue';
@@ -10,6 +10,10 @@ const props = defineProps({
         type: String,
         default: '',
     },
+    must: {
+        type: Boolean,
+        default: true,
+    }
 });
 const emit = defineEmits(['value']);
 const refElInput = ref(null);
