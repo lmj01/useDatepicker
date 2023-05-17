@@ -2,7 +2,7 @@
     <input ref="refElInput" type="text" class="form-control date" :class="size" :required="must">
 </template>
 <script setup>
-import { reactive, onMounted, ref, defineProps, defineEmits, defineExpose } from 'vue';
+import { reactive, onMounted, ref } from 'vue';
 import Datepicker from './js/Datepicker';
 import zhCN from './js/i18n/locales/zh-CN';
 const props = defineProps({
