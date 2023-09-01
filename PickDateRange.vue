@@ -4,21 +4,21 @@
             <a class="btn" disabled v-html="labelFrom"></a>
         </div>
         <div class="col-auto p-0 m-0">
-            <input type="text" name="range-start" class="form-control text-center" :class="size" required>
+            <input type="text" name="range-start" class="form-control text-center" :class="size" :required="must">
         </div>
         <div class="col-auto p-0 m-0">
             <a class="btn" disabled v-html="labelTo"></a>
         </div>
         <div class="col-auto p-0 m-0">
-            <input type="text" name="range-end" class="form-control text-center" :class="size" required>
+            <input type="text" name="range-end" class="form-control text-center" :class="size" :required="must">
         </div>
     </div>
 </template>
 <script setup>
-import { reactive, onMounted, ref } from 'vue'
-import Datepicker from './js/Datepicker'
-import DateRangePicker from './js/DateRangePicker'
-import zhCN from './js/i18n/locales/zh-CN'
+import { onMounted, ref } from 'vue';
+import Datepicker from './js/Datepicker';
+import DateRangePicker from './js/DateRangePicker';
+import zhCN from './js/i18n/locales/zh-CN';
 const props = defineProps({
     labelFrom: {
         type: String,
@@ -31,6 +31,10 @@ const props = defineProps({
     size: {
         type: String,
         default: '',
+    },
+    must: {
+        type: Boolean,
+        default: true,
     },
 });
 const emit = defineEmits(['update']);
