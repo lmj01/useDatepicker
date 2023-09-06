@@ -62,8 +62,14 @@ const initial = () => {
         });
     });
 }
+function reset() {
+    elPickRange.value.querySelectorAll('input').forEach((input) => {
+        input.value = '';
+        emit('update', input.getAttribute('name'), '');
+    });
+}
 onMounted(() => initial());
 defineExpose({
-
+    reset,
 });
 </script>
