@@ -15,10 +15,10 @@
     </div>
 </template>
 <script setup>
-import { reactive, onMounted, ref, computed } from 'vue'
-import Datepicker from './js/Datepicker'
-import DateRangePicker from './js/DateRangePicker'
-import zhCN from './js/i18n/locales/zh-CN'
+import { onMounted, ref, computed } from 'vue';
+import Datepicker from './js/Datepicker';
+import DateRangePicker from './js/DateRangePicker';
+import zhCN from './js/i18n/locales/zh-CN';
 const props = defineProps({
     labelFrom: {
         type: String,
