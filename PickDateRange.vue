@@ -37,7 +37,7 @@ const props = defineProps({
         default: true,
     },
 });
-const emit = defineEmits(['update']);
+const emit = defineEmits(['update','reset']);
 const elPickRange = ref(null);
 const datepicker = ref(null);
 const btnStyle = computed(()=>{
@@ -65,7 +65,7 @@ const initial = () => {
 function reset() {
     elPickRange.value.querySelectorAll('input').forEach((input) => {
         input.value = '';
-        emit('update', input.getAttribute('name'), '');
+        emit('reset', input.getAttribute('name'), '');
     });
 }
 onMounted(() => initial());
