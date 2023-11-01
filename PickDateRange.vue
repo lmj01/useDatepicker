@@ -15,10 +15,10 @@
     </div>
 </template>
 <script setup>
-import { reactive, onMounted, ref, computed } from 'vue'
-import Datepicker from './js/Datepicker'
-import DateRangePicker from './js/DateRangePicker'
-import zhCN from './js/i18n/locales/zh-CN'
+import { onMounted, ref, computed } from 'vue';
+import Datepicker from './js/Datepicker';
+import DateRangePicker from './js/DateRangePicker';
+import zhCN from './js/i18n/locales/zh-CN';
 const props = defineProps({
     labelFrom: {
         type: String,
@@ -37,7 +37,7 @@ const props = defineProps({
         default: true,
     },
 });
-const emit = defineEmits(['update']);
+const emit = defineEmits(['update','reset']);
 const elPickRange = ref(null);
 const datepicker = ref(null);
 const btnStyle = computed(()=>{
@@ -62,8 +62,14 @@ const initial = () => {
         });
     });
 }
+function reset() {
+    elPickRange.value.querySelectorAll('input').forEach((input) => {
+        input.value = '';
+        emit('reset', input.getAttribute('name'), '');
+    });
+}
 onMounted(() => initial());
 defineExpose({
-
+    reset,
 });
 </script>
