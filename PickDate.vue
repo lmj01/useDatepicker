@@ -67,10 +67,25 @@ function setMinDate(options = {}) {
     ud.datepicker.setOptions(newOption);
     elInput.value.value = ud.bk;
 }
+function setMaxDate(options = {}) {
+    ud.bk = elInput.value.value;
+    let newOption = {
+        maxDate: null,
+        minDate: null,
+    }
+    let today = new Date();
+    today.setDate(today.getDate() + (options.date || 0));
+    today.setMonth(today.getMonth() + (options.month || 0));            
+    today.setFullYear(today.getFullYear() + (options.year || 0));            
+    newOption.maxDate = `${today.getFullYear()}-${today.getMonth()+1}-${today.getDate()}`;
+    ud.datepicker.setOptions(newOption);
+    elInput.value.value = ud.bk;
+}
 onMounted(() => initial());
 defineExpose({
     update,
     lockDate,
     setMinDate,
+    setMaxDate,
 })
 </script>
