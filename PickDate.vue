@@ -1,5 +1,5 @@
 <template>
-    <input ref="elInput" type="text" class="form-control date" :class="inputStyle" :required="must">
+    <input ref="elInput" type="text" class="form-control date" :class="inputStyle" :required="must" :disabled="disabled">
 </template>
 <script setup>
 import { reactive, onMounted, ref, computed } from 'vue';
@@ -13,7 +13,11 @@ const props = defineProps({
     must: {
         type: Boolean,
         default: true,
-    }
+    },
+    disabled: {
+        type: Boolean,
+        default: false,
+    },
 });
 const emit = defineEmits(['value']);
 const elInput = ref(null);
