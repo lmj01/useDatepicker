@@ -4,7 +4,16 @@ export function parseHTML(html) {
   return range.createContextualFragment(html);
 }
 
-// equivalent to jQuery's :visble
+export function getParent(el) {
+  return el.parentElement
+    || (el.parentNode instanceof ShadowRoot ? el.parentNode.host : undefined);
+}
+
+export function isActiveElement(el) {
+  return el.getRootNode().activeElement === el;
+}
+
+// equivalent to jQuery's :visible
 export function isVisible(el) {
   return !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length);
 }
@@ -25,7 +34,7 @@ export function showElement(el) {
     return;
   }
   if (el.dataset.styleDisplay) {
-    // restore backed-up dispay property
+    // restore backed-up display property
     el.style.display = el.dataset.styleDisplay;
     delete el.dataset.styleDisplay;
   } else {

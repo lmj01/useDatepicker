@@ -1,13 +1,21 @@
 import {lastItemOf, stringToArray, isInRange} from './lib/utils.js';
-import {today} from './lib/date.js';
+import {today, regularizeDate} from './lib/date.js';
 import {parseDate, formatDate} from './lib/date-format.js';
+import {isActiveElement} from './lib/dom.js';
 import {registerListeners, unregisterListeners} from './lib/event.js';
-import {locales} from './i18n/base-locales.js';
+import locales from './i18n/base-locales.js';
 import defaultOptions from './options/defaultOptions.js';
 import processOptions from './options/processOptions.js';
+import createShortcutKeyConfig from './options/shortcutKeys.js';
 import Picker from './picker/Picker.js';
 import {triggerDatepickerEvent} from './events/functions.js';
-import {onKeydown, onFocus, onMousedown, onClickInput, onPaste} from './events/inputFieldListeners.js';
+import {
+  onKeydown,
+  onFocus,
+  onMousedown,
+  onClickInput,
+  onPaste,
+} from './events/elementListeners.js';
 import {onClickOutside} from './events/otherListeners.js';
 
 function stringifyDates(dates, config) {
@@ -21,38 +29,27 @@ function stringifyDates(dates, config) {
 // when origDates (current selection) is passed, the function works to mix
 // the input dates into the current selection
 function processInputDates(datepicker, inputDates, clear = false) {
-  const {config, dates: origDates, rangepicker} = datepicker;
   if (inputDates.length === 0) {
     // empty input is considered valid unless origiDates is passed
     return clear ? [] : undefined;
   }
 
-  const rangeEnd = rangepicker && datepicker === rangepicker.datepickers[1];
+  const {config, dates: origDates, rangeSideIndex} = datepicker;
+  const {pickLevel, maxNumberOfDates} = config;
   let newDates = inputDates.reduce((dates, dt) => {
     let date = parseDate(dt, config.format, config.locale);
     if (date === undefined) {
       return dates;
     }
-    if (config.pickLevel > 0) {
-      // adjust to 1st of the month/Jan 1st of the year
-      // or to the last day of the monh/Dec 31st of the year if the datepicker
-      // is the range-end picker of a rangepicker
-      const dt = new Date(date);
-      if (config.pickLevel === 1) {
-        date = rangeEnd
-          ? dt.setMonth(dt.getMonth() + 1, 0)
-          : dt.setDate(1);
-      } else {
-        date = rangeEnd
-          ? dt.setFullYear(dt.getFullYear() + 1, 0, 0)
-          : dt.setMonth(0, 1);
-      }
-    }
+    // adjust to 1st of the month/Jan 1st of the year
+    // or to the last day of the monh/Dec 31st of the year if the datepicker
+    // is the range-end picker of a rangepicker
+    date = regularizeDate(date, pickLevel, rangeSideIndex);
     if (
       isInRange(date, config.minDate, config.maxDate)
       && !dates.includes(date)
-      && !config.datesDisabled.includes(date)
-      && !config.daysOfWeekDisabled.includes(new Date(date).getDay())
+      && !config.checkDisabled(date, pickLevel)
+      && (pickLevel > 0 || !config.daysOfWeekDisabled.includes(new Date(date).getDay()))
     ) {
       dates.push(date);
     }
@@ -71,18 +68,18 @@ function processInputDates(datepicker, inputDates, clear = false) {
     }, origDates.filter(date => !newDates.includes(date)));
   }
   // do length check always because user can input multiple dates regardless of the mode
-  return config.maxNumberOfDates && newDates.length > config.maxNumberOfDates
-    ? newDates.slice(config.maxNumberOfDates * -1)
+  return maxNumberOfDates && newDates.length > maxNumberOfDates
+    ? newDates.slice(maxNumberOfDates * -1)
     : newDates;
 }
 
 // refresh the UI elements
 // modes: 1: input only, 2, picker only, 3 both
-function refreshUI(datepicker, mode = 3, quickRender = true) {
+function refreshUI(datepicker, mode = 3, quickRender = true, viewDate = undefined) {
   const {config, picker, inputField} = datepicker;
   if (mode & 2) {
     const newView = picker.active ? config.pickLevel : config.startView;
-    picker.update().changeView(newView).render(quickRender);
+    picker.update(viewDate).changeView(newView).render(quickRender);
   }
   if (mode & 1 && inputField) {
     inputField.value = stringifyDates(datepicker.dates, config);
@@ -90,30 +87,39 @@ function refreshUI(datepicker, mode = 3, quickRender = true) {
 }
 
 function setDate(datepicker, inputDates, options) {
-  let {clear, render, autohide} = options;
+  const config = datepicker.config;
+  let {clear, render, autohide, revert, forceRefresh, viewDate} = options;
   if (render === undefined) {
     render = true;
   }
   if (!render) {
-    autohide = false;
+    autohide = forceRefresh = false;
   } else if (autohide === undefined) {
-    autohide = datepicker.config.autohide;
+    autohide = config.autohide;
   }
+  viewDate = parseDate(viewDate, config.format, config.locale);
 
   const newDates = processInputDates(datepicker, inputDates, clear);
-  if (!newDates) {
+  if (!newDates && !revert) {
     return;
   }
-  if (newDates.toString() !== datepicker.dates.toString()) {
+  if (newDates && newDates.toString() !== datepicker.dates.toString()) {
     datepicker.dates = newDates;
-    refreshUI(datepicker, render ? 3 : 1);
+    refreshUI(datepicker, render ? 3 : 1, true, viewDate);
     triggerDatepickerEvent(datepicker, 'changeDate');
   } else {
-    refreshUI(datepicker, 1);
+    refreshUI(datepicker, forceRefresh ? 3 : 1, true, viewDate);
   }
+
   if (autohide) {
     datepicker.hide();
   }
+}
+
+function getOutputConverter(datepicker, format) {
+  return format
+    ? date => formatDate(date, format, datepicker.config.locale)
+    : date => new Date(date);
 }
 
 /**
@@ -131,35 +137,31 @@ export default class Datepicker {
   constructor(element, options = {}, rangepicker = undefined) {
     element.datepicker = this;
     this.element = element;
+    this.dates = [];
 
-    // set up config
+    // initialize config
     const config = this.config = Object.assign({
       buttonClass: (options.buttonClass && String(options.buttonClass)) || 'button',
-      container: document.body,
+      container: null,
       defaultViewDate: today(),
       maxDate: undefined,
       minDate: undefined,
     }, processOptions(defaultOptions, this));
-    this._options = options;
-    Object.assign(config, processOptions(options, this));
 
     // configure by type
-    const inline = this.inline = element.tagName !== 'INPUT';
     let inputField;
-    let initialDates;
-
-    if (inline) {
-      config.container = element;
-      initialDates = stringToArray(element.dataset.date, config.dateDelimiter);
-      delete element.dataset.date;
-    } else {
-      const container = options.container ? document.querySelector(options.container) : null;
-      if (container) {
-        config.container = container;
-      }
+    if (element.tagName === 'INPUT') {
       inputField = this.inputField = element;
       inputField.classList.add('datepicker-input');
-      initialDates = stringToArray(inputField.value, config.dateDelimiter);
+      if (options.container) {
+        // omit string type check because it doesn't guarantee to avoid errors
+        // (invalid selector string causes abend with syntax error)
+        config.container = options.container instanceof HTMLElement
+          ? options.container
+          : document.querySelector(options.container);
+      }
+    } else {
+      config.container = element;
     }
     if (rangepicker) {
       // check validiry
@@ -170,19 +172,23 @@ export default class Datepicker {
       }
       // attach itaelf to the rangepicker here so that processInputDates() can
       // determine if this is the range-end picker of the rangepicker while
-      // setting inital values when pickLevel > 0
+      // setting initial values when pickLevel > 0
       datepickers[index] = this;
-      // add getter for rangepicker
-      Object.defineProperty(this, 'rangepicker', {
-        get() {
-          return rangepicker;
-        },
-      });
+      this.rangepicker = rangepicker;
+      this.rangeSideIndex = index;
     }
 
-    // set initial dates
-    this.dates = [];
+    // set up config
+    this._options = options;
+    Object.assign(config, processOptions(options, this));
+    config.shortcutKeys = createShortcutKeyConfig(options.shortcutKeys || {});
+
     // process initial value
+    const initialDates = stringToArray(
+      element.value || element.dataset.date,
+      config.dateDelimiter
+    );
+    delete element.dataset.date;
     const inputDateValues = processInputDates(this, initialDates);
     if (inputDateValues && inputDateValues.length > 0) {
       this.dates = inputDateValues;
@@ -191,24 +197,29 @@ export default class Datepicker {
       inputField.value = stringifyDates(this.dates, config);
     }
 
+    // set up picekr element
     const picker = this.picker = new Picker(this);
 
-    if (inline) {
-      this.show();
-    } else {
-      // set up event listeners in other modes
-      const onMousedownDocument = onClickOutside.bind(null, this);
-      const listeners = [
-        [inputField, 'keydown', onKeydown.bind(null, this)],
+    const keydownListener = [element, 'keydown', onKeydown.bind(null, this)];
+    if (inputField) {
+      registerListeners(this, [
+        keydownListener,
         [inputField, 'focus', onFocus.bind(null, this)],
         [inputField, 'mousedown', onMousedown.bind(null, this)],
         [inputField, 'click', onClickInput.bind(null, this)],
         [inputField, 'paste', onPaste.bind(null, this)],
-        [document, 'mousedown', onMousedownDocument],
-        [document, 'touchstart', onMousedownDocument],
+        // To detect a click on outside, just listening to mousedown is enough,
+        // no need to listen to touchstart.
+        // Actually, listening to touchstart can be a problem because, while
+        // mousedown is fired only on tapping but not on swiping/pinching,
+        // touchstart is fired on swiping/pinching as well.
+        // (issue #95)
+        [document, 'mousedown', onClickOutside.bind(null, this)],
         [window, 'resize', picker.place.bind(picker)]
-      ];
-      registerListeners(this, listeners);
+      ]);
+    } else {
+      registerListeners(this, [keydownListener]);
+      this.show();
     }
   }
 
@@ -258,7 +269,7 @@ export default class Datepicker {
   }
 
   /**
-   * @type {Boolean} - Whether the picker element is shown. `true` whne shown
+   * @type {Boolean} - Whether the picker element is shown. `true` when shown
    */
   get active() {
     return !!(this.picker && this.picker.active);
@@ -276,11 +287,10 @@ export default class Datepicker {
    * @param {Object} options - config options to update
    */
   setOptions(options) {
-    const picker = this.picker;
     const newOptions = processOptions(options, this);
     Object.assign(this._options, options);
     Object.assign(this.config, newOptions);
-    picker.setOptions(newOptions);
+    this.picker.setOptions(newOptions);
 
     refreshUI(this, 3);
   }
@@ -290,12 +300,13 @@ export default class Datepicker {
    */
   show() {
     if (this.inputField) {
-      if (this.inputField.disabled) {
+      const {config, inputField} = this;
+      if (inputField.disabled || (inputField.readOnly && !config.enableOnReadonly)) {
         return;
       }
-      if (this.inputField !== document.activeElement) {
+      if (!isActiveElement(inputField) && !config.disableTouchKeyboard) {
         this._showing = true;
-        this.inputField.focus();
+        inputField.focus();
         delete this._showing;
       }
     }
@@ -307,11 +318,25 @@ export default class Datepicker {
    * Not available on inline picker
    */
   hide() {
-    if (this.inline) {
+    if (!this.inputField) {
       return;
     }
     this.picker.hide();
     this.picker.update().changeView(this.config.startView).render();
+  }
+
+  /**
+   * Toggle the display of the picker element
+   * Not available on inline picker
+   *
+   * Unlike hide(), the picker does not return to the start view when hiding.
+   */
+  toggle() {
+    if (!this.picker.active) {
+      this.show();
+    } else if (this.inputField) {
+      this.picker.hide();
+    }
   }
 
   /**
@@ -322,10 +347,9 @@ export default class Datepicker {
     this.hide();
     unregisterListeners(this);
     this.picker.detach();
-    if (!this.inline) {
-      this.inputField.classList.remove('datepicker-input');
-    }
-    delete this.element.datepicker;
+    const element = this.element;
+    element.classList.remove('datepicker-input');
+    delete element.datepicker;
     return this;
   }
 
@@ -336,14 +360,12 @@ export default class Datepicker {
    * an array of selected dates in multidate mode. If format string is passed,
    * it returns date string(s) formatted in given format.
    *
-   * @param  {String} [format] - Format string to stringify the date(s)
+   * @param  {String} [format] - format string to stringify the date(s)
    * @return {Date|String|Date[]|String[]} - selected date(s), or if none is
-   * selected, empty array in multidate mode and untitled in sigledate mode
+   * selected, empty array in multidate mode and undefined in sigledate mode
    */
   getDate(format = undefined) {
-    const callback = format
-      ? date => formatDate(date, format, this.config.locale)
-      : date => new Date(date);
+    const callback = getOutputConverter(this, format);
 
     if (this.config.multidate) {
       return this.dates.map(callback);
@@ -379,28 +401,44 @@ export default class Datepicker {
    * passed, the method ignores them and applies only valid ones. In the case
    * that all the given dates are invalid, which is distinguished from passing
    * no dates, the method considers it as an error and leaves the selection
-   * untouched.
+   * untouched. (The input field also remains untouched unless revert: true
+   * option is used.)
+   * Replacing the selection with the same date(s) also causes a similar
+   * situation. In both cases, the method does not refresh the picker element
+   * unless forceRefresh: true option is used.
+   *
+   * If viewDate option is used, the method changes the focused date to the
+   * specified date instead of the last item of the selection.
    *
    * @param {...(Date|Number|String)|Array} [dates] - Date strings, Date
    * objects, time values or mix of those for new selection
    * @param {Object} [options] - function options
    * - clear: {boolean} - Whether to clear the existing selection
-   *     defualt: false
+   *     default: false
    * - render: {boolean} - Whether to re-render the picker element
    *     default: true
    * - autohide: {boolean} - Whether to hide the picker element after re-render
    *     Ignored when used with render: false
    *     default: config.autohide
+   * - revert: {boolean} - Whether to refresh the input field when all the
+   *     passed dates are invalid
+   *     default: false
+   * - forceRefresh: {boolean} - Whether to refresh the picker element when
+   *     passed dates don't change the existing selection
+   *     default: false
+   * - viewDate: {Date|Number|String} - Date to be focused after setiing date(s)
+   *     default: The last item of the resulting selection, or defaultViewDate
+   *     config option if none is selected
    */
   setDate(...args) {
     const dates = [...args];
     const opts = {};
     const lastArg = lastItemOf(args);
     if (
-      typeof lastArg === 'object'
+      lastArg
+      && typeof lastArg === 'object'
       && !Array.isArray(lastArg)
       && !(lastArg instanceof Date)
-      && lastArg
     ) {
       Object.assign(opts, dates.pop());
     }
@@ -415,18 +453,76 @@ export default class Datepicker {
    *
    * The input field will be refreshed with properly formatted date string.
    *
+   * In the case that all the entered dates are invalid (unparsable, repeated,
+   * disabled or out-of-range), which is distinguished from empty input field,
+   * the method leaves the input field untouched as well as the selection by
+   * default. If revert: true option is used in this case, the input field is
+   * refreshed with the existing selection.
+   * The method also doesn't refresh the picker element in this case and when
+   * the entered dates are the same as the existing selection. If
+   * forceRefresh: true option is used, the picker element is refreshed in
+   * these cases too.
+   *
    * @param  {Object} [options] - function options
    * - autohide: {boolean} - whether to hide the picker element after refresh
    *     default: false
+   * - revert: {boolean} - Whether to refresh the input field when all the
+   *     passed dates are invalid
+   *     default: false
+   * - forceRefresh: {boolean} - Whether to refresh the picer element when
+   *     input field's value doesn't change the existing selection
+   *     default: false
    */
   update(options = undefined) {
-    if (this.inline) {
+    if (!this.inputField) {
       return;
     }
 
-    const opts = {clear: true, autohide: !!(options && options.autohide)};
+    const opts = Object.assign(options || {}, {clear: true, render: true, viewDate: undefined});
     const inputDates = stringToArray(this.inputField.value, this.config.dateDelimiter);
     setDate(this, inputDates, opts);
+  }
+
+  /**
+   * Get the focused date
+   *
+   * The method returns a Date object of focused date by default. If format
+   * string is passed, it returns date string formatted in given format.
+   *
+   * @param  {String} [format] - format string to stringify the date
+   * @return {Date|String} - focused date (viewDate)
+   */
+  getFocusedDate(format = undefined) {
+    return getOutputConverter(this, format)(this.picker.viewDate);
+  }
+
+  /**
+   * Set focused date
+   *
+   * By default, the method updates the focus on the view shown at the time,
+   * or the one set to the startView config option if the picker is hidden.
+   * When resetView: true is passed, the view displayed is changed to the
+   * pickLevel config option's if the picker is shown.
+   *
+   * @param {Date|Number|String} viewDate - date string, Date object, time
+   * values of the date to focus
+   * @param {Boolean} [resetView] - whether to change the view to pickLevel
+   * config option's when the picker is shown. Ignored when the picker is
+   * hidden
+   */
+  setFocusedDate(viewDate, resetView = false) {
+    const {config, picker, active, rangeSideIndex} = this;
+    const pickLevel = config.pickLevel;
+    const newViewDate = parseDate(viewDate, config.format, config.locale);
+    if (newViewDate === undefined) {
+      return;
+    }
+
+    picker.changeFocus(regularizeDate(newViewDate, pickLevel, rangeSideIndex));
+    if (active && resetView) {
+      picker.changeView(pickLevel);
+    }
+    picker.render();
   }
 
   /**
@@ -458,11 +554,12 @@ export default class Datepicker {
    * Not available on inline picker or when the picker element is hidden
    */
   enterEditMode() {
-    if (this.inline || !this.picker.active || this.editMode) {
+    const inputField = this.inputField;
+    if (!inputField || inputField.readOnly || !this.picker.active || this.editMode) {
       return;
     }
     this.editMode = true;
-    this.inputField.classList.add('in-edit');
+    inputField.classList.add('in-edit');
   }
 
   /**
@@ -474,7 +571,7 @@ export default class Datepicker {
    *     default: false
    */
   exitEditMode(options = undefined) {
-    if (this.inline || !this.editMode) {
+    if (!this.inputField || !this.editMode) {
       return;
     }
     const opts = Object.assign({update: false}, options);

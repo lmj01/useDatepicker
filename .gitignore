@@ -1,0 +1,14 @@
+node_modules
+refs
+
+scss/datepicker-bs4.scss
+scss/datepicker-bulma.scss
+scss/datepicker-foundation.scss
+scss/index-bs4.scss
+scss/index-bulma.scss
+scss/index-foundation.scss
+
+js/i18n/*
+!js/i18n/base-locales.js
+!js/i18n/locales/zh-CN.js
+
