@@ -12,5 +12,6 @@ $dp-cell-size-base: 3.25rem;
 // theme 
 因为目前很多颜色是写死的，并没有关联bootstrap5.3的变量上，需要定制一份scss 
 对特定的background-color替换为--bs-xxx的值
+https://github.com/mymth/vanillajs-datepicker/issues/159
 ```
 
