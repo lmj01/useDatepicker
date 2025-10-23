@@ -36,6 +36,14 @@ const props = defineProps({
         type: Boolean,
         default: true,
     },
+    defStart: {
+        type: String,
+        default: '',
+    },
+    defEnd: {
+        type: String,
+        default: '',
+    },
 });
 const emit = defineEmits(['update','reset']);
 const elPickRange = ref(null);
@@ -55,6 +63,7 @@ const initial = () => {
         language: 'zh-CN',
         buttonClass: 'btn',
     });
+    datepicker.value.setDates(props.defStart, props.defEnd);
     elPickRange.value.querySelectorAll('input').forEach((input) => {
         input.addEventListener('changeDate', (event) => {
             const target = event.target;
